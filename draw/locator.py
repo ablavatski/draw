@@ -166,7 +166,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=Flatten(
-            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(100, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
+            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(svhn_train.num_examples, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
         ),
         algorithm=algorithm,
         extensions=[
@@ -175,7 +175,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
                        DataStreamMonitoring(
                            monitors,
                            Flatten(
-                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(100, batch_size)),
+                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(svhn_test.num_examples, batch_size)),
                                              ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
                            ),
                            prefix="test"),
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, dest="epochs",
                         default=25, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
-                        default=1, help="Size of each mini-batch")
+                        default=100, help="Size of each mini-batch")
     parser.add_argument("--niter", type=int, dest="n_iter",
                         default=10, help="No. of iterations")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
