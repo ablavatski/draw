@@ -160,7 +160,7 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=Flatten(
-            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(100, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
+            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(svhn_train.num_examples, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
         ),
         algorithm=algorithm,
         extensions=[
@@ -169,7 +169,7 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
                        DataStreamMonitoring(
                            monitors,
                            Flatten(
-                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(100, batch_size)),
+                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(svhn_test.num_examples, batch_size)),
                                              ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
                            ),
                            prefix="test"),
