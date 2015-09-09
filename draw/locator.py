@@ -42,7 +42,7 @@ fuel.config.floatX = theano.config.floatX
 
 
 # ----------------------------------------------------------------------------
-def main(name, epochs, batch_size, n_iter, learning_rate):
+def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_dim, z_dim):
     channels, img_height, img_width = 1, 28, 58
 
     rnninits = {
@@ -58,13 +58,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
     }
     x_dim = channels * img_height * img_width
 
-    read_N = 12
-
     read_dim = channels * read_N ** 2
-
-    enc_dim = 256
-    dec_dim = 256
-    z_dim = 100
 
     subdir = name + "-" + time.strftime("%Y-%m-%d")
     if not os.path.exists(subdir):
@@ -112,7 +106,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
     orig_x = tensor.col('bbox_lefts')
     orig_d = tensor.col('bbox_widths')
 
-    cost = BinaryCrossEntropy().apply(tensor.concatenate([center_y, center_x, delta]), tensor.concatenate([orig_y, orig_x, orig_d]))
+    cost = SquaredError().apply(tensor.concatenate([center_y, center_x, delta]), tensor.concatenate([orig_y, orig_x, orig_d]))
     cost.name = "squared_error"
 
     # ------------------------------------------------------------
@@ -156,7 +150,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
 
     # ------------------------------------------------------------
     plotting_extensions = [
-        Plot(name, channels=plot_channels, server_url='http://localhost:5006')
+        Plot(name, channels=plot_channels, start_server = True)
     ]
 
     # ------------------------------------------------------------
@@ -166,7 +160,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=Flatten(
-            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(svhn_train.num_examples, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
+            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(100, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
         ),
         algorithm=algorithm,
         extensions=[
@@ -175,7 +169,7 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
                        DataStreamMonitoring(
                            monitors,
                            Flatten(
-                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(svhn_test.num_examples, batch_size)),
+                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(100, batch_size)),
                                              ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
                            ),
                            prefix="test"),
@@ -195,15 +189,23 @@ def main(name, epochs, batch_size, n_iter, learning_rate):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                        default=None, help="Name for this experiment")
+                        default='Locator', help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
                         default=25, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
                         default=100, help="Size of each mini-batch")
-    parser.add_argument("--niter", type=int, dest="n_iter",
-                        default=10, help="No. of iterations")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                         default=1e-3, help="Learning rate")
+    parser.add_argument("--read_N", "-a", type=int, default=12,
+                        help="Use attention mechanism")
+    parser.add_argument("--niter", type=int, dest="n_iter",
+                        default=10, help="No. of iterations")
+    parser.add_argument("--enc-dim", type=int, dest="enc_dim",
+                        default=256, help="Encoder RNN state dimension")
+    parser.add_argument("--dec-dim", type=int, dest="dec_dim",
+                        default=256, help="Decoder  RNN state dimension")
+    parser.add_argument("--z-dim", type=int, dest="z_dim",
+                        default=100, help="Z-vector dimension")
     args = parser.parse_args()
 
     main(**vars(args))
