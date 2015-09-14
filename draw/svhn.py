@@ -18,6 +18,7 @@ class SVHN(H5PYDataset):
         new_t = []
         new_l = []
         new_d = []
+        orig = []
 
         def rgb2gray(rgb):
             return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
@@ -35,9 +36,11 @@ class SVHN(H5PYDataset):
             new_l.append((l + w / 2) * ratio_x)
             new_d.append(float(max(h * ratio_y, w * ratio_x)) / N_global)
 
-            new_x.append([rgb2gray(sc.misc.imresize(image, (height_global, width_global)))])
+            resized = sc.misc.imresize(image, (height_global, width_global))
+            new_x.append([rgb2gray(resized)])
+            orig.append(resized)
 
-        return np.array(new_x), np.array(new_l), np.array(new_t), np.array(new_d), height
+        return np.array(new_x), np.array(new_l), np.array(new_t), np.array(new_d), np.array(orig)
 
     default_transformers = (
         (Mapping, [fix_representation], {}),

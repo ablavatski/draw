@@ -1,10 +1,15 @@
 from __future__ import division, print_function
 
-from six.moves import cPickle
+import cPickle as pickle
 from blocks.extensions.saveload import Checkpoint, SAVED_TO
 from blocks.serialization import secure_dump
 
+
 class PartsOnlyCheckpoint(Checkpoint):
+    def __init__(self, path, **kwargs):
+        super(PartsOnlyCheckpoint, self).__init__(path=path, **kwargs)
+        self.iteration = 1
+
     def do(self, callback_name, *args):
         """Pickle the save_separately parts (and not the main loop object) to disk.
 
@@ -24,12 +29,11 @@ class PartsOnlyCheckpoint(Checkpoint):
             # secure_dump(self.main_loop, path, use_cpickle=self.use_cpickle)
             filenames = self.save_separately_filenames(path)
             for attribute in self.save_separately:
-                secure_dump(getattr(self.main_loop, attribute),
-                            filenames[attribute], cPickle.dump)
+                secure_dump(getattr(self.main_loop, attribute), filenames[attribute] + '_%d.pkl' % self.iteration, pickle.dump, protocol=pickle.HIGHEST_PROTOCOL)
+            self.iteration += 1
         except Exception:
             path = None
             raise
         finally:
             already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
-            self.main_loop.log.current_row[SAVED_TO] = (already_saved_to +
-                                                        (path,))
+            self.main_loop.log.current_row[SAVED_TO] = (already_saved_to + (path,))

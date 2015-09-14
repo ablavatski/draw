@@ -215,20 +215,6 @@ class LocatorModel(BaseRecurrent, Initializable, Random):
 
         return center_y, center_x, delta, h_enc, c_enc, z, h_dec, c_dec
 
-    # @recurrent(sequences=['u'], contexts=[], states=['c', 'h_dec', 'c_dec'], outputs=['c', 'h_dec', 'c_dec'])
-    # def decode(self, u, c, h_dec, c_dec):
-    #     batch_size = c.shape[0]
-    #
-    #     z = self.sampler.sample_from_prior(u)
-    #     i_dec = self.decoder_mlp.apply(z)
-    #     h_dec, c_dec = self.decoder_rnn.apply(
-    #         states=h_dec, cells=c_dec,
-    #         inputs=i_dec, iterate=False)
-    #     c = c + self.writer.apply(h_dec)
-    #     return c, h_dec, c_dec
-
-    # ------------------------------------------------------------------------
-
     @application(inputs=['features'], outputs=['center_y', 'center_x', 'delta'])
     def calculate(self, features):
         batch_size = features.shape[0]
@@ -250,22 +236,14 @@ class LocatorModel(BaseRecurrent, Initializable, Random):
 
         return center_y, center_x, delta
 
-        # @application(inputs=['n_samples'], outputs=['samples'])
-        # def sample(self, n_samples):
-        #     """Sample from model.
-        #
-        #     Returns
-        #     -------
-        #
-        #     samples : tensor3 (n_samples, n_iter, x_dim)
-        #     """
-        #
-        #     # Sample from mean-zeros std.-one Gaussian
-        #     u_dim = self.sampler.mean_transform.get_dim('output')
-        #     u = self.theano_rng.normal(
-        #         size=(self.n_iter, n_samples, u_dim),
-        #         avg=0., std=1.)
-        #
-        #     c, _, _, = self.decode(u)
-        #     # c, _, _, center_y, center_x, delta = self.decode(u)
-        #     return T.nnet.sigmoid(c)
+    # ------------------------------------------------------------------------
+
+    @application(inputs=['features', 'batch_size'], outputs=['center_y', 'center_x', 'delta'])
+    def find(self, features, batch_size):
+        dim_z = self.get_dim('z')
+
+        # Sample from mean-zeros std.-one Gaussian
+        u = self.theano_rng.normal(size=(self.n_iter, batch_size, dim_z), avg=0., std=1.)
+        center_y, center_x, delta, h_enc, c_enc, z, h_dec, c_dec = self.apply(x=features, u=u)
+
+        return center_y, center_x, delta

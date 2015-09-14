@@ -36,6 +36,7 @@ from blocks.bricks.recurrent import LSTM
 from model import *
 from draw import *
 from partsonlycheckpoint import PartsOnlyCheckpoint
+from locatorcheckpoint import LocatorCheckpoint
 from plot import Plot
 
 fuel.config.floatX = theano.config.floatX
@@ -106,8 +107,8 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
     orig_x = tensor.col('bbox_lefts')
     orig_d = tensor.col('bbox_widths')
 
-    cost = SquaredError().apply(tensor.concatenate([center_y, center_x, delta]), tensor.concatenate([orig_y, orig_x, orig_d]))
-    cost.name = "squared_error"
+    cost = AbsoluteError().apply(tensor.concatenate([center_y, center_x, delta]), tensor.concatenate([orig_y, orig_x, orig_d]))
+    cost.name = "absolute_error"
 
     # ------------------------------------------------------------
 
@@ -144,13 +145,13 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
 
     # Live plotting...
     plot_channels = [
-        ["train_squared_error", "test_squared_error"],
+        ["train_absolute_error", "test_absolute_error"],
         ["train_total_gradient_norm", "train_total_step_norm"]
     ]
 
     # ------------------------------------------------------------
     plotting_extensions = [
-        Plot(name, channels=plot_channels, start_server=True, server_url='http://localhost:5006')
+        Plot(name, channels=plot_channels, start_server=False, server_url='http://localhost:5006')
     ]
 
     # ------------------------------------------------------------
@@ -166,6 +167,10 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
         extensions=[
                        Timing(),
                        FinishAfter(after_n_epochs=epochs),
+                       TrainingDataMonitoring(
+                           train_monitors,
+                           prefix="train",
+                           after_epoch=True),
                        DataStreamMonitoring(
                            monitors,
                            Flatten(
@@ -173,12 +178,8 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
                                              ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
                            ),
                            prefix="test"),
-                       TrainingDataMonitoring(
-                           train_monitors,
-                           prefix="train",
-                           after_epoch=True),
-                       PartsOnlyCheckpoint("{}/{}".format(subdir, name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
-                       # SampleCheckpoint(image_size=img_height, channels=channels, save_subdir=subdir, before_training=True, after_epoch=True),
+                       PartsOnlyCheckpoint("{}/{}".format(subdir, name), before_training=False, after_epoch=True, save_separately=['log', 'model']),
+                       LocatorCheckpoint(save_subdir=subdir, img_height=img_height, img_width=img_width, N=read_N, batch_size=1, before_training=False, after_epoch=True),
                        ProgressBar(),
                        Printing()] + plotting_extensions)
     main_loop.run()
@@ -191,15 +192,15 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, dest="name",
                         default='Locator', help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
-                        default=25, help="Number of training epochs to do")
+                        default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
                         default=100, help="Size of each mini-batch")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                         default=1e-3, help="Learning rate")
-    parser.add_argument("--read_N", "-a", type=int, default=12,
-                        help="Use attention mechanism")
+    parser.add_argument("--read_N", "-a", type=int,
+                        default=4, help="Use attention mechanism")
     parser.add_argument("--niter", type=int, dest="n_iter",
-                        default=10, help="No. of iterations")
+                        default=8, help="No. of iterations")
     parser.add_argument("--enc-dim", type=int, dest="enc_dim",
                         default=256, help="Encoder RNN state dimension")
     parser.add_argument("--dec-dim", type=int, dest="dec_dim",
