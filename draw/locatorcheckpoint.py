@@ -36,9 +36,9 @@ class LocatorCheckpoint(Checkpoint):
     def do(self, callback_name, *args):
         locator = self.main_loop.model.get_top_bricks()[0]
         # reset the random generator
-        del locator._theano_rng
-        del locator._theano_seed
-        locator.seed_rng = np.random.RandomState(config.default_seed)
+        # del locator._theano_rng
+        # del locator._theano_seed
+        # locator.seed_rng = np.random.RandomState(config.default_seed)
 
         # ------------------------------------------------------------
         logging.info("Compiling locator function...")
@@ -61,8 +61,8 @@ class LocatorCheckpoint(Checkpoint):
         half = image[3] * self.N / 2
         draw.rectangle([(image[1] - half, max(image[2] - half, 0)), (image[1] + half, min(image[2] + half, self.img_height - 1))], outline=(0, 255, 0))
 
-        for c_y, c_x, d in zip(center_y, center_x, delta):
-            draw.rectangle([(c_x - self.N * d / 2, c_y - self.N * d / 2), (c_x + self.N * d / 2, c_y + self.N * d / 2)], outline=(255, 0, 0))
+        for c_y, c_x, d in zip(center_y[-1:], center_x[-1:, ], delta[-1,]):
+            draw.rectangle([(c_x - d / 2, c_y - d / 2), (c_x + d / 2, c_y + d / 2)], outline=(255, 0, 0))
         del draw
 
         fraction = 5

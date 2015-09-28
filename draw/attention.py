@@ -4,14 +4,14 @@ from __future__ import division
 
 import numpy as np
 
-import theano 
+import theano
 import theano.tensor as T
 
 from theano import tensor
 
 #-----------------------------------------------------------------------------
-        
-def my_batched_dot(A, B):     
+
+def my_batched_dot(A, B):
     """Batched version of dot-product.     
        
     For A[dim_1, dim_2, dim_3] and B[dim_1, dim_3, dim_4] this         
@@ -23,8 +23,8 @@ def my_batched_dot(A, B):
     Returns        
     -------        
         C : shape (dim_1 \times dim_2 \times dim_4)        
-    """        
-    C = A.dimshuffle([0,1,2,'x']) * B.dimshuffle([0,'x',1,2])      
+    """
+    C = A.dimshuffle([0,1,2,'x']) * B.dimshuffle([0,'x',1,2])
     return C.sum(axis=-2)
 
 #-----------------------------------------------------------------------------
@@ -70,7 +70,7 @@ class ZoomableAttentionWindow(object):
 
         a = tensor.arange(self.img_width)
         b = tensor.arange(self.img_height)
-        
+
         FX = tensor.exp( -(a-muX.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
         FY = tensor.exp( -(b-muY.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
         FX = FX / (FX.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
@@ -190,24 +190,38 @@ class ZoomableAttentionWindow(object):
         log_delta = l[:,2]
         log_sigma = l[:,3]
         log_gamma = l[:,4]
-    
+
         delta = T.exp(log_delta)
         sigma = T.exp(log_sigma/2.)
         gamma = T.exp(log_gamma).dimshuffle(0, 'x')
-    
+
         # normalize coordinates
         center_x = (center_x+1.)/2. * self.img_width
         center_y = (center_y+1.)/2. * self.img_height
         delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
-    
+
         return center_y, center_x, delta, sigma, gamma
 
-#=============================================================================
+    def nn2att_wn(self, l):
+        center_y = l[:, 0]
+        center_x = l[:, 1]
+        log_delta = l[:, 2]
+
+        delta = T.exp(log_delta)
+
+        center_x = (center_x + 1.) / 2.
+        center_y = (center_y + 1.) / 2.
+        delta = delta / (self.N - 1)
+
+        return center_y, center_x, delta
+
+
+# =============================================================================
 
 if __name__ == "__main__":
     from PIL import Image
 
-    N = 40 
+    N = 40
     channels = 3
     height = 480
     width =  640
@@ -239,7 +253,7 @@ if __name__ == "__main__":
 
     I = Image.open("cat.jpg")
     I = I.resize((640, 480)) #.convert('L')
-    
+
     I = np.asarray(I).transpose([2, 0, 1])
     I = I.reshape( (channels*width*height) )
     I = I / 255.
@@ -265,7 +279,7 @@ if __name__ == "__main__":
         image = image.transpose([1, 2, 0])
         return image / image.max()
 
-    
+
     import pylab
     pylab.figure()
     pylab.gray()
@@ -279,5 +293,5 @@ if __name__ == "__main__":
     pylab.gray()
     pylab.imshow(imagify(I2, height, width), interpolation='nearest')
     pylab.show(block=True)
-    
+
     import ipdb; ipdb.set_trace()
