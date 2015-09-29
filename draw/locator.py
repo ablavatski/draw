@@ -36,7 +36,6 @@ from blocks.bricks.recurrent import LSTM
 from model import *
 from draw import *
 from partsonlycheckpoint import PartsOnlyCheckpoint
-from locatorcheckpoint import LocatorCheckpoint
 from plot import Plot
 import numpy as np
 from PIL import Image, ImageDraw
@@ -47,7 +46,7 @@ fuel.config.floatX = theano.config.floatX
 
 # ----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_dim, oldmodel):
-    channels, img_height, img_width = 3, 54, 54
+    channels, img_height, img_width = 3, 54, 108
 
     rnninits = {
         # 'weights_init': Orthogonal(),
@@ -118,28 +117,34 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
     #
     # batch_size = T.iscalar('batch_size')
     #
-    # center_y, center_x, delta = simple_locator.find(x, batch_size)
+    # center_y, center_x, deltaY, deltaX, r = simple_locator.find(x, batch_size)
     #
-    # do_sample = theano.function([x, batch_size], outputs=[center_y, center_x, delta], mode=theano.compile.MonitorMode(post_func=detect_nan))
-    # center_y, center_x, delta = do_sample(image[0], 3)
+    # do_sample = theano.function([x, batch_size], outputs=[center_y, center_x, deltaY, deltaX, r], mode=theano.compile.MonitorMode(post_func=detect_nan))
+    # center_y, center_x, deltaY, deltaX, r = do_sample(image[0], 3)
     #
-    # im = image[0].reshape([channels, img_height, img_height])
-    # im = im.transpose([1, 2, 0])
+    # im1 = r[0][0].reshape([channels, read_N, read_N])
+    # im2 = image[0][0].reshape([channels, img_height, img_width])
+    # im1 = im1.transpose([1, 2, 0])
+    # im2 = im2.transpose([1, 2, 0])
     # # sc.misc.imsave('1.png', im / im.max())
     # import pylab
     # pylab.figure()
     # pylab.gray()
-    # pylab.imshow(im / im.max(), interpolation='nearest')
+    # pylab.imshow(im1 / im1.max(), interpolation='nearest')
+    # pylab.figure()
+    # pylab.gray()
+    # pylab.imshow(im2 / im2.max(), interpolation='nearest')
     # pylab.show(block=True)
     # return
 
-    center_y, center_x, delta = simple_locator.calculate(x)
+    center_y, center_x, deltaY, deltaX = simple_locator.calculate(x)
 
-    orig_y = tensor.fmatrix('bbox_tops')
     orig_x = tensor.fmatrix('bbox_lefts')
-    orig_d = tensor.fmatrix('bbox_widths')
+    orig_y = tensor.fmatrix('bbox_tops')
+    orig_dx = tensor.fmatrix('bbox_widths')
+    orig_dy = tensor.fmatrix('bbox_heights')
 
-    cost = BinaryCrossEntropy().apply(tensor.concatenate([center_y, center_x, delta]), tensor.concatenate([orig_y, orig_x, orig_d]))
+    cost = AbsoluteError().apply(tensor.concatenate([center_y, center_x, deltaY, deltaX]), tensor.concatenate([orig_y, orig_x, orig_dy, orig_dx]))
     cost.name = "loss_function"
 
     # ------------------------------------------------------------
@@ -194,7 +199,7 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=Flatten(
-            FilterSources(DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(svhn_train.num_examples, batch_size)), ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
+            DataStream.default_stream(svhn_train, iteration_scheme=SequentialScheme(svhn_train.num_examples, batch_size))
         ),
         algorithm=algorithm,
         extensions=[
@@ -207,12 +212,10 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
                        DataStreamMonitoring(
                            monitors,
                            Flatten(
-                               FilterSources(DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(svhn_test.num_examples, batch_size)),
-                                             ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths'))
+                               DataStream.default_stream(svhn_test, iteration_scheme=SequentialScheme(svhn_test.num_examples, batch_size))
                            ),
                            prefix="test"),
                        PartsOnlyCheckpoint("{}/{}".format(subdir, name), before_training=False, after_epoch=True, save_separately=['model']),
-                       # LocatorCheckpoint(save_subdir=subdir, img_height=img_height, img_width=img_width, N=read_N, batch_size=1, before_training=False, after_epoch=True),
                        ProgressBar(),
                        Printing()] + plotting_extensions)
     if oldmodel is not None:
@@ -229,11 +232,11 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                        default='Locator-Cross-Entropy', help="Name for this experiment")
+                        default='Locator-Absolute', help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
                         default=500, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
-                        default=240, help="Size of each mini-batch")
+                        default=110, help="Size of each mini-batch")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                         default=1e-3, help="Learning rate")
     parser.add_argument("--read_N", "-a", type=int,

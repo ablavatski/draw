@@ -37,27 +37,32 @@ if __name__ == "__main__":
     svhn = Flatten(DataStream.default_stream(svhn, iteration_scheme=SequentialScheme(svhn.num_examples, 1)))
     svhn.get_epoch_iterator()
 
-    for i in range(1, 105):
+    for i in range(104, 105):
         image = svhn.get_data()
-
-        im = Image.fromarray(image[4].reshape(img_height, img_width, 3), 'RGB')
+        im = image[0].reshape([3, img_height, img_width]) * 255
+        im = im.transpose([1, 2, 0]).astype('uint8')
+        im = Image.fromarray(im, 'RGB')
         draw = ImageDraw.Draw(im)
-        half = image[3][n_iter - 1] / 2 * (N - 1) * max(img_width, img_height)
-        draw.rectangle([(image[1][n_iter - 1] * img_width - half, image[2][n_iter - 1] * img_height - half), (image[1][n_iter - 1] * img_width + half, image[2][n_iter - 1] * img_height + half)],
-                       outline=(0, 255, 0))
+        half_x = image[3][n_iter - 1] / 2 * (N - 1) * (img_width - 1)
+        half_y = image[4][n_iter - 1] / 2 * (N - 1) * (img_height - 1)
+
+        draw.rectangle(
+            [(image[1][n_iter - 1] * img_width - half_x, image[2][n_iter - 1] * img_height - half_y), (image[1][n_iter - 1] * img_width + half_x, image[2][n_iter - 1] * img_height + half_y)],
+            outline=(0, 255, 0))
 
         x = T.matrix("features")
         batch_size = T.iscalar('batch_size')
 
-        center_y, center_x, delta = locator.find(x, batch_size)
+        center_y, center_x, deltaY, deltaX = locator.find(x, batch_size)
 
-        do_sample = theano.function([x, batch_size], outputs=[center_y, center_x, delta], allow_input_downcast=True)
-        center_y, center_x, delta = do_sample(image[0], 1)
+        do_sample = theano.function([x, batch_size], outputs=[center_y, center_x, deltaY, deltaX], allow_input_downcast=True)
+        center_y, center_x, deltaY, deltaX = do_sample(image[0], 1)
 
-        for c_y, c_x, d in zip(center_y[-1:], center_x[-1:], delta[-1:]):
-            half = d / 2 * max(img_width, img_height) * (N - 1)
-            draw.rectangle([(c_x * img_width - half, c_y * img_height - half), (c_x * img_width + half, c_y * img_height + half)], outline=(255, 0, 0))
+        for c_y, c_x, dy, dx in zip(center_y[-1:], center_x[-1:], deltaY[-1:], deltaX[-1:]):
+            half_x = dx / 2 * (img_width - 1) * (N - 1)
+            half_y = dy / 2 * (img_height - 1) * (N - 1)
+            draw.rectangle([(c_x * img_width - half_x, c_y * img_height - half_y), (c_x * img_width + half_x, c_y * img_height + half_y)], outline=(255, 0, 0))
         del draw
         #
         fraction = 5
-        im.resize((im.size[0] * fraction, im.size[1] * fraction)).save('Locator-Absolute-2015-09-28/%d.jpg' % i)
+        im.resize((im.size[0] * fraction, im.size[1] * fraction)).show()

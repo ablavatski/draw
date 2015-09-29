@@ -225,7 +225,7 @@ class LocatorReader(Initializable):
         self.output_dim = channels * N * N
 
         self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
-        self.readout = MLP(activations=[Identity()], dims=[dec_dim, 5], **kwargs)
+        self.readout = MLP(activations=[Identity()], dims=[dec_dim, 7], **kwargs)
 
         self.children = [self.readout]
 
@@ -234,8 +234,8 @@ class LocatorReader(Initializable):
             return self.dec_dim
         elif name == 'x_dim':
             return self.x_dim
-        # elif name == 'output':
-        #     return self.output_dim
+        elif name == 'output':
+            return self.output_dim
         else:
             raise ValueError
 
@@ -243,19 +243,19 @@ class LocatorReader(Initializable):
     def apply(self, x, h_dec):
         l = self.readout.apply(h_dec)
 
-        center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
+        center_y, center_x, deltaY, deltaX, sigmaY, sigmaX, gamma = self.zoomer.nn2att(l)
 
-        w = gamma * self.zoomer.read(x, center_y, center_x, delta, sigma)
+        w = gamma * self.zoomer.read(x, center_y, center_x, deltaY, deltaX, sigmaY, sigmaX)
 
         return w, l
 
-    @application(inputs=['h_dec'], outputs=['center_y', 'center_x', 'delta'])
+    @application(inputs=['h_dec'], outputs=['center_y', 'center_x', 'deltaY', 'deltaX'])
     def apply_l(self, h_dec):
         l = self.readout.apply(h_dec)
 
-        center_y, center_x, delta = self.zoomer.nn2att_wn(l)
+        center_y, center_x, deltaY, deltaX = self.zoomer.nn2att_wn(l)
 
-        return center_y, center_x, delta
+        return center_y, center_x, deltaY, deltaX
 
 
 class Representer(Initializable):
@@ -362,15 +362,6 @@ class SimpleLocatorModel1LSTM(BaseRecurrent, Initializable, Random):
 
         center_y, center_x, delta, h_dec, c_dec = self.apply(x=features, n_steps=self.n_iter, batch_size=batch_size)
 
-        # center_y = center_y[-1, :]
-        # center_y.name = "center_y"
-
-        # center_x = center_x[-1, :]
-        # center_x.name = "center_x"
-
-        # delta = delta[-1, :]
-        # delta.name = 'delta'
-
         return center_y, center_x, delta
 
     @application(inputs=['features', 'batch_size'], outputs=['center_y', 'center_x', 'delta'])
@@ -407,13 +398,17 @@ class SimpleLocatorModel2LSTM(BaseRecurrent, Initializable):
             return 0
         elif name == 'center_x':
             return 0
-        elif name == 'delta':
+        elif name == 'deltaY':
             return 0
+        elif name == 'deltaX':
+            return 0
+        # elif name == 'r':
+        #     self.reader.get_dim('output')
         else:
             super(SimpleLocatorModel2LSTM, self).get_dim(name)
 
     @recurrent(sequences=[], contexts=['x', 'n_steps', 'batch_size'], states=['h_enc', 'c_enc', 'h_dec', 'c_dec'],
-               outputs=['center_y', 'center_x', 'delta', 'h_enc', 'c_enc', 'h_dec', 'c_dec'])
+               outputs=['center_y', 'center_x', 'deltaY', 'deltaX', 'h_enc', 'c_enc', 'h_dec', 'c_dec'])
     def apply(self, h_enc, c_enc, h_dec, c_dec, x, n_steps, batch_size):
         r, l = self.reader.apply(x, h_dec)
 
@@ -423,30 +418,21 @@ class SimpleLocatorModel2LSTM(BaseRecurrent, Initializable):
         i_dec = self.decoder_mlp.apply(h_enc)
         h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
 
-        center_y, center_x, delta = self.reader.apply_l(h_dec)
+        center_y, center_x, deltaY, deltaX = self.reader.apply_l(h_dec)
 
-        return center_y, center_x, delta, h_enc, c_enc, h_dec, c_dec
+        return center_y, center_x, deltaY, deltaX, h_enc, c_enc, h_dec, c_dec
 
-    @application(inputs=['features'], outputs=['center_y', 'center_x', 'delta'])
+    @application(inputs=['features'], outputs=['center_y', 'center_x', 'deltaY', 'deltaX'])
     def calculate(self, features):
         batch_size = features.shape[0]
 
-        center_y, center_x, delta, h_enc, c_enc, h_dec, c_dec = self.apply(x=features, n_steps=self.n_iter, batch_size=batch_size)
+        center_y, center_x, deltaY, deltaX, h_enc, c_enc, h_dec, c_dec = self.apply(x=features, n_steps=self.n_iter, batch_size=batch_size)
 
-        # center_y = center_y[-1, :]
-        # center_y.name = "center_y"
+        return center_y, center_x, deltaY, deltaX
 
-        # center_x = center_x[-1, :]
-        # center_x.name = "center_x"
-
-        # delta = delta[-1, :]
-        # delta.name = 'delta'
-
-        return center_y, center_x, delta
-
-    @application(inputs=['features', 'batch_size'], outputs=['center_y', 'center_x', 'delta'])
+    @application(inputs=['features', 'batch_size'], outputs=['center_y', 'center_x', 'deltaY', 'deltaX'])
     def find(self, features, batch_size):
 
-        center_y, center_x, delta, h_enc, c_enc, h_dec, c_dec = self.apply(x=features, n_steps=self.n_iter, batch_size=batch_size)
+        center_y, center_x, deltaY, deltaX, h_enc, c_enc, h_dec, c_dec = self.apply(x=features, n_steps=self.n_iter, batch_size=batch_size)
 
-        return center_y, center_x, delta
+        return center_y, center_x, deltaY, deltaX

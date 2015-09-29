@@ -19,15 +19,13 @@ class SVHN(H5PYDataset):
         new_x = []
         new_t = []
         new_l = []
-        new_d = []
-        orig = []
-
-        # def rgb2gray(rgb):
-        #     return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
+        new_dt = []
+        new_dl = []
 
         start_l = 0.5
         start_t = 0.5
-        start_d = 1. / N_global
+        start_dt = 1. / N_global
+        start_dl = 1. / N_global
 
         # start_t = 0.5 * height_global
         # start_l = 0.5 * width_global
@@ -52,22 +50,25 @@ class SVHN(H5PYDataset):
             step = (start_l - gt_l) / n_iter_global
             new_l.append([(start_l - i * step) for i in range(1, n_iter_global + 1)])
 
-            gt_d = min(float(max(h * ratio_y, w * ratio_x)) / (N_global) / max(width_global, height_global), max_value)
+            gt_dt = min(h * ratio_y / (N_global - 1) / (height_global - 1), max_value)
             # gt_d = float(max(h * ratio_y, w * ratio_x)) / (N_global)
-            step = (start_d - gt_d) / n_iter_global
-            new_d.append([(start_d - i * step) for i in range(1, n_iter_global + 1)])
+            step = (start_dt - gt_dt) / n_iter_global
+            new_dt.append([(start_dt - i * step) for i in range(1, n_iter_global + 1)])
+
+            gt_dl = min(w * ratio_x / (N_global - 1) / (width_global - 1), max_value)
+            # gt_d = float(max(h * ratio_y, w * ratio_x)) / (N_global)
+            step = (start_dl - gt_dl) / n_iter_global
+            new_dl.append([(start_dl - i * step) for i in range(1, n_iter_global + 1)])
 
             resized = sc.misc.imresize(image, (height_global, width_global))
-            # new_x.append([rgb2gray(resized)])
             new_x.append([resized.transpose([2, 0, 1])])
-            orig.append(resized)
 
-        return np.array(new_x), np.array(new_l).transpose(), np.array(new_t).transpose(), np.array(new_d).transpose(), np.array(orig)
+        return np.array(new_x), np.array(new_l).transpose(), np.array(new_t).transpose(), np.array(new_dl).transpose(), np.array(new_dt).transpose()
 
     default_transformers = (
         (Mapping, [fix_representation], {}),
         (ScaleAndShift, [1 / 255.0, 0], {'which_sources': ('features',)}),
-        (Cast, ['floatX'], {'which_sources': ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths')}),
+        (Cast, ['floatX'], {'which_sources': ('features', 'bbox_lefts', 'bbox_tops', 'bbox_widths', 'bbox_heights')}),
     )
 
     def __init__(self, which_sets, height, width, N, n_iter, **kwargs):
