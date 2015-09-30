@@ -189,7 +189,7 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
 
     # ------------------------------------------------------------
     plotting_extensions = [
-        Plot(name, channels=plot_channels, start_server=False, server_url='http://localhost:5006/')
+        Plot(name, channels=plot_channels, start_server=False, server_url='http://155.69.151.184:80/')
     ]
 
     # ------------------------------------------------------------
