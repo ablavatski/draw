@@ -51,7 +51,7 @@ def main(name, epochs, batch_size, learning_rate, read_N, n_iter, enc_dim, dec_d
     rnninits = {
         # 'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
-        'biases_init': Constant(0.),
+        'biases_init': Constant(1.),
     }
 
     inits = {
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, dest="epochs",
                         default=500, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
-                        default=110, help="Size of each mini-batch")
+                        default=500, help="Size of each mini-batch")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                         default=1e-3, help="Learning rate")
     parser.add_argument("--read_N", "-a", type=int,
@@ -244,9 +244,9 @@ if __name__ == "__main__":
     parser.add_argument("--niter", type=int, dest="n_iter",
                         default=8, help="No. of iterations")
     parser.add_argument("--enc-dim", type=int, dest="enc_dim",
-                        default=256, help="Encoder RNN state dimension")
+                        default=900, help="Encoder RNN state dimension")
     parser.add_argument("--dec-dim", type=int, dest="dec_dim",
-                        default=256, help="Decoder  RNN state dimension")
+                        default=900, help="Decoder  RNN state dimension")
     parser.add_argument("--oldmodel", type=str, help="Use a model pkl file created by a previous run as a starting point for all parameters")
     args = parser.parse_args()
 

@@ -35,17 +35,17 @@ class SVHN(H5PYDataset):
             ratio_y = float(height_global) / image.shape[1]
             ratio_x = float(width_global) / image.shape[2]
 
-            t = np.min(top[idx])
-            l = np.min(left[idx])
-            h = np.max([np.sum(coord) for coord in zip(top[idx], height[idx])]) - t
-            w = np.max([np.sum(coord) for coord in zip(left[idx], width[idx])]) - l
+            t = max(np.min(top[idx].astype(np.int16)), 0)
+            l = max(np.min(left[idx].astype(np.int16)), 0)
+            h = np.max([np.sum(coord) for coord in zip(top[idx].astype(np.int16), height[idx].astype(np.int16))]) - t
+            w = np.max([np.sum(coord) for coord in zip(left[idx].astype(np.int16), width[idx].astype(np.int16))]) - l
 
-            gt_t = min((t + h / 2) * ratio_y / height_global, max_value)
+            gt_t = min((t + (h + 1) / 2) * ratio_y / height_global, max_value)
             # gt_t = (t + h / 2) * ratio_y
             step = (start_t - gt_t) / n_iter_global
             new_t.append([(start_t - i * step) for i in range(1, n_iter_global + 1)])
 
-            gt_l = min((l + w / 2) * ratio_x / width_global, max_value)
+            gt_l = min((l + (w + 1) / 2) * ratio_x / width_global, max_value)
             # gt_l = (l + w / 2) * ratio_x
             step = (start_l - gt_l) / n_iter_global
             new_l.append([(start_l - i * step) for i in range(1, n_iter_global + 1)])

@@ -44,11 +44,11 @@ class ZoomableAttentionWindow(object):
         tol = 1e-4
         N = self.N
 
-        muX = center_x.dimshuffle([0, 'x']) + deltaX.dimshuffle([0, 'x']) * (T.arange(N) - N / 2 - 0.5)
-        muY = center_y.dimshuffle([0, 'x']) + deltaY.dimshuffle([0, 'x']) * (T.arange(N) - N / 2 - 0.5)
+        muX = center_x.dimshuffle([0, 'x']) + deltaX.dimshuffle([0, 'x']) * (T.arange(N, dtype=theano.config.floatX) - N / 2 - 0.5)
+        muY = center_y.dimshuffle([0, 'x']) + deltaY.dimshuffle([0, 'x']) * (T.arange(N, dtype=theano.config.floatX) - N / 2 - 0.5)
 
-        a = tensor.arange(self.img_width)
-        b = tensor.arange(self.img_height)
+        a = tensor.arange(self.img_width, dtype=theano.config.floatX)
+        b = tensor.arange(self.img_height, dtype=theano.config.floatX)
 
         FX = tensor.exp(-(a - muX.dimshuffle([0, 1, 'x'])) ** 2 / 2. / sigmaX.dimshuffle([0, 'x', 'x']) ** 2)
         FY = tensor.exp(-(b - muY.dimshuffle([0, 1, 'x'])) ** 2 / 2. / sigmaY.dimshuffle([0, 'x', 'x']) ** 2)
